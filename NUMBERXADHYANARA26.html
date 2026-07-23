@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADHYANARA 2026 — Cek Nomor Peserta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --navy-deep:#071b32;
+    --navy:#0e2c4d;
+    --ocean:#1c5a8f;
+    --ocean-light:#3f86b8;
+    --foam:#bfe4f2;
+    --foam-light:#eef8fb;
+    --paper:#faf5e9;
+    --paper-dark:#efe6d2;
+    --koi-orange:#e2712f;
+    --koi-gold:#f0ad3f;
+    --koi-red:#c23f2d;
+    --ink:#122033;
+    --ink-soft:#3c5266;
+    --ok:#3c8a5b;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:'Plus Jakarta Sans',sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 15% 8%, rgba(240,173,63,.10), transparent 40%),
+      linear-gradient(180deg, var(--navy-deep) 0%, var(--navy) 45%, var(--ocean) 100%);
+    overflow-x:hidden;
+    position:relative;
+  }
+  .font-display{font-family:'Shippori Mincho',serif;}
+  .font-mono{font-family:'JetBrains Mono',monospace;}
+
+  /* ---------- Seigaiha wave background ---------- */
+  .waves-bg{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    opacity:.5;
+    background-image:
+      repeating-radial-gradient(circle at 0 100%, transparent 0, transparent 26px, rgba(191,228,242,.10) 27px, rgba(191,228,242,.10) 29px, transparent 30px),
+      repeating-radial-gradient(circle at 0 100%, transparent 0, transparent 46px, rgba(191,228,242,.07) 47px, rgba(191,228,242,.07) 49px, transparent 50px);
+    background-size:60px 60px;
+    background-position:0 0, 30px 0;
+  }
+  .waves-bg::after{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(7,27,50,.35), rgba(7,27,50,.75) 70%, var(--navy-deep) 100%);
+  }
+
+  /* ---------- Koi ---------- */
+  .koi-layer{position:fixed; inset:0; z-index:1; pointer-events:none; overflow:hidden;}
+  .koi{position:absolute; opacity:.85; filter:drop-shadow(0 6px 10px rgba(0,0,0,.25));}
+  .koi svg{display:block; width:100%; height:100%;}
+  .koi-1{ width:120px; top:14%; animation:swim1 26s linear infinite;}
+  .koi-2{ width:90px; top:58%; animation:swim2 34s linear infinite; animation-delay:-6s;}
+  .koi-3{ width:70px; top:36%; animation:swim3 30s linear infinite; animation-delay:-14s;}
+  @keyframes swim1{
+    0%{ left:-15%; transform:translateY(0) scaleX(1); }
+    48%{ left:110%; transform:translateY(-18px) scaleX(1); }
+    50%{ left:110%; transform:translateY(-18px) scaleX(-1); }
+    98%{ left:-15%; transform:translateY(10px) scaleX(-1); }
+    100%{ left:-15%; transform:translateY(0) scaleX(1); }
+  }
+  @keyframes swim2{
+    0%{ left:110%; transform:translateY(0) scaleX(-1); }
+    48%{ left:-15%; transform:translateY(14px) scaleX(-1); }
+    50%{ left:-15%; transform:translateY(14px) scaleX(1); }
+    98%{ left:110%; transform:translateY(-10px) scaleX(1); }
+    100%{ left:110%; transform:translateY(0) scaleX(-1); }
+  }
+  @keyframes swim3{
+    0%{ left:-10%; transform:translateY(0) scaleX(1); }
+    48%{ left:105%; transform:translateY(-10px) scaleX(1); }
+    50%{ left:105%; transform:translateY(-10px) scaleX(-1); }
+    98%{ left:-10%; transform:translateY(8px) scaleX(-1); }
+    100%{ left:-10%; transform:translateY(0) scaleX(1); }
+  }
+
+  /* ---------- layout ---------- */
+  .page{position:relative; z-index:2; max-width:920px; margin:0 auto; padding:56px 20px 40px;}
+  header.hero{text-align:center; margin-bottom:34px;}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.22em;
+    color:var(--foam); text-transform:uppercase; opacity:.85;
+  }
+  .eyebrow::before,.eyebrow::after{content:"〜"; color:var(--koi-gold); opacity:.8;}
+  h1.title{
+    font-family:'Shippori Mincho',serif; font-weight:800;
+    color:#fff; font-size:clamp(34px,7vw,56px); margin:10px 0 4px; letter-spacing:.02em;
+    text-shadow:0 4px 24px rgba(0,0,0,.35);
+  }
+  .subtitle{color:var(--foam); font-size:16px; margin:0 0 2px; letter-spacing:.03em;}
+  .tagline{color:var(--koi-gold); font-family:'Shippori Mincho',serif; font-size:15px; margin-top:6px;}
+
+  /* ---------- search card ---------- */
+  .search-card{
+    background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+    border:1px solid rgba(191,228,242,.25);
+    backdrop-filter:blur(6px);
+    border-radius:var(--radius);
+    padding:26px;
+    max-width:560px; margin:0 auto 30px;
+    box-shadow:0 20px 60px -20px rgba(0,0,0,.5);
+  }
+  .search-card label{
+    display:block; color:var(--foam-light); font-size:13px; margin-bottom:8px; letter-spacing:.03em;
+  }
+  .search-row{display:flex; gap:10px;}
+  .search-row input{
+    flex:1; min-width:0;
+    background:var(--paper); border:2px solid transparent;
+    border-radius:12px; padding:14px 16px; font-size:16px; color:var(--ink);
+    font-family:'Plus Jakarta Sans',sans-serif;
+    outline:none; transition:border-color .15s, transform .15s;
+  }
+  .search-row input:focus{border-color:var(--koi-gold); transform:translateY(-1px);}
+  .search-row button{
+    background:linear-gradient(135deg, var(--koi-orange), var(--koi-red));
+    color:#fff; border:none; border-radius:12px; padding:0 24px;
+    font-weight:700; font-size:15px; cursor:pointer;
+    transition:transform .15s, box-shadow .15s;
+    box-shadow:0 8px 20px -6px rgba(226,113,47,.6);
+  }
+  .search-row button:hover{transform:translateY(-2px);}
+  .search-row button:active{transform:translateY(0);}
+  .hint{color:rgba(238,248,251,.6); font-size:12.5px; margin-top:10px;}
+
+  /* ---------- results ---------- */
+  #results{max-width:640px; margin:0 auto; display:flex; flex-direction:column; gap:16px;}
+  .msg-card{
+    background:rgba(255,255,255,.07); border:1px dashed rgba(191,228,242,.35);
+    border-radius:14px; padding:20px; text-align:center; color:var(--foam-light);
+  }
+  .pick-list{
+    background:rgba(255,255,255,.07); border:1px solid rgba(191,228,242,.25);
+    border-radius:14px; padding:8px; display:flex; flex-direction:column;
+  }
+  .pick-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 14px; border-radius:10px; cursor:pointer; color:#fff; gap:10px;
+    transition:background .15s;
+  }
+  .pick-item:hover{background:rgba(255,255,255,.08);}
+  .pick-item span.n{font-family:'JetBrains Mono',monospace; color:var(--koi-gold); font-size:13px;}
+
+  /* ---------- ticket ---------- */
+  .ticket{
+    position:relative;
+    background:var(--paper);
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 30px 70px -20px rgba(0,0,0,.55);
+    animation:riseIn .5s ease both;
+  }
+  @keyframes riseIn{ from{opacity:0; transform:translateY(16px) scale(.98);} to{opacity:1; transform:translateY(0) scale(1);} }
+  .ticket-head{
+    background:linear-gradient(120deg, var(--navy) 0%, var(--ocean) 60%, var(--ocean-light) 100%);
+    padding:16px 22px; color:#fff; display:flex; justify-content:space-between; align-items:center;
+    position:relative; overflow:hidden;
+  }
+  .ticket-head::after{
+    content:""; position:absolute; right:-30px; top:-30px; width:120px; height:120px; border-radius:50%;
+    background:radial-gradient(circle, rgba(240,173,63,.35), transparent 70%);
+  }
+  .ticket-head .eb{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.15em; opacity:.85;}
+  .ticket-head .ev{font-family:'Shippori Mincho',serif; font-size:19px; font-weight:700;}
+  .ticket-body{display:flex; gap:18px; padding:22px; align-items:center; flex-wrap:wrap;}
+  .ticket-info{flex:1; min-width:180px;}
+  .ticket-info .name{font-family:'Shippori Mincho',serif; font-size:26px; font-weight:700; color:var(--ink); margin:0 0 2px;}
+  .ticket-info .num{font-family:'JetBrains Mono',monospace; color:var(--koi-red); font-size:15px; margin:0 0 14px; letter-spacing:.04em;}
+  .meta-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px 16px;}
+  .meta-item .lbl{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); opacity:.75;}
+  .meta-item .val{font-size:15px; font-weight:700; color:var(--ink);}
+  .status-pill{
+    display:inline-flex; align-items:center; gap:6px; margin-top:14px;
+    background:rgba(60,138,91,.12); color:var(--ok); border:1px solid rgba(60,138,91,.35);
+    padding:6px 12px; border-radius:999px; font-size:13px; font-weight:700;
+  }
+  .status-pill.checked{background:rgba(226,113,47,.14); color:var(--koi-red); border-color:rgba(226,113,47,.4);}
+  .qr-box{
+    background:#fff; padding:10px; border-radius:12px; border:1px solid var(--paper-dark);
+    display:flex; align-items:center; justify-content:center; width:118px; height:118px; flex-shrink:0;
+  }
+  .tear{
+    position:relative; height:0; border-top:2px dashed var(--paper-dark); margin:0 22px;
+  }
+  .tear::before,.tear::after{
+    content:""; position:absolute; top:-11px; width:22px; height:22px; border-radius:50%;
+    background:var(--ocean-light);
+  }
+  .tear::before{left:-33px;} .tear::after{right:-33px;}
+  .ticket-foot{
+    padding:16px 22px 22px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  .area-tag{color:var(--ink-soft); font-size:13.5px;}
+  .area-tag b{color:var(--ink);}
+  .maps-link{
+    color:var(--ocean); font-weight:700; font-size:13.5px; text-decoration:none;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .maps-link:hover{text-decoration:underline;}
+
+  footer{text-align:center; color:rgba(238,248,251,.55); font-size:12.5px; padding:30px 20px 10px;}
+  .admin-link{
+    background:none; border:none; color:rgba(238,248,251,.5); font-size:12px; cursor:pointer;
+    text-decoration:underline; margin-top:6px;
+  }
+
+  /* ---------- Admin modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(4,14,26,.72); backdrop-filter:blur(3px);
+    z-index:50; display:none; align-items:flex-start; justify-content:center; padding:40px 16px; overflow:auto;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--paper); border-radius:18px; width:100%; max-width:880px; padding:26px;
+    box-shadow:0 30px 80px rgba(0,0,0,.5);
+  }
+  .modal h2{font-family:'Shippori Mincho',serif; margin:0 0 4px; color:var(--ink);}
+  .modal .sub{color:var(--ink-soft); font-size:13px; margin:0 0 18px;}
+  .modal-close{float:right; background:none; border:none; font-size:22px; cursor:pointer; color:var(--ink-soft);}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12.5px; color:var(--ink-soft); margin-bottom:6px;}
+  .field input{width:100%; padding:11px 13px; border-radius:10px; border:1.5px solid var(--paper-dark); font-size:14px; background:#fff;}
+  .btn{
+    border:none; border-radius:10px; padding:10px 18px; font-weight:700; font-size:13.5px; cursor:pointer;
+    transition:transform .12s;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:linear-gradient(135deg,var(--koi-orange),var(--koi-red)); color:#fff;}
+  .btn-ghost{background:var(--paper-dark); color:var(--ink);}
+  .btn-outline{background:#fff; border:1.5px solid var(--paper-dark); color:var(--ink);}
+  .row-actions{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 18px;}
+  table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
+  table.data-table th{
+    text-align:left; background:var(--navy); color:#fff; padding:9px 8px; font-size:11.5px;
+    text-transform:uppercase; letter-spacing:.05em; position:sticky; top:0;
+  }
+  table.data-table td{padding:6px; border-bottom:1px solid var(--paper-dark);}
+  table.data-table td input{width:100%; border:1px solid transparent; background:transparent; padding:5px 6px; border-radius:6px; font-size:13px;}
+  table.data-table td input:focus{border-color:var(--koi-gold); background:#fff; outline:none;}
+  table.data-table tr:hover td{background:rgba(191,228,242,.15);}
+  .table-wrap{max-height:340px; overflow:auto; border:1px solid var(--paper-dark); border-radius:10px;}
+  .del-btn{background:none; border:none; color:var(--koi-red); cursor:pointer; font-size:16px;}
+  .admin-note{background:#fff8ea; border:1px solid #f0dbb0; border-radius:10px; padding:12px 14px; font-size:12.5px; color:var(--ink-soft); margin-top:16px; line-height:1.5;}
+  #scanBox{width:100%; max-width:360px; margin:0 auto;}
+  .hidden{display:none !important;}
+
+  @media (max-width:520px){
+    .search-row{flex-direction:column;}
+    .search-row button{padding:13px;}
+    .ticket-body{flex-direction:column; align-items:flex-start;}
+    .qr-box{align-self:center;}
+    .meta-grid{grid-template-columns:1fr 1fr;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .koi{animation:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="waves-bg"></div>
+<div class="koi-layer">
+  <div class="koi koi-1">
+    <svg viewBox="0 0 200 90"><g>
+      <path d="M20 45 C40 15,120 10,150 30 C175 45,185 45,195 40 C185 50,175 50,150 60 C120 78,40 72,20 45Z" fill="#e2712f"/>
+      <path d="M195 40 L215 25 L210 45 L218 62 Z" fill="#e2712f" opacity=".85"/>
+      <path d="M40 30 C70 20,110 20,140 32" stroke="#fff" stroke-width="4" fill="none" opacity=".6"/>
+      <circle cx="35" cy="42" r="3" fill="#122033"/>
+    </g></svg>
+  </div>
+  <div class="koi koi-2">
+    <svg viewBox="0 0 200 90"><g>
+      <path d="M20 45 C40 15,120 10,150 30 C175 45,185 45,195 40 C185 50,175 50,150 60 C120 78,40 72,20 45Z" fill="#f4f4f4"/>
+      <path d="M195 40 L215 25 L210 45 L218 62 Z" fill="#f4f4f4" opacity=".85"/>
+      <path d="M55 25 C75 20,95 40,120 35 C140 30,150 45,165 40" stroke="#c23f2d" stroke-width="6" fill="none" opacity=".8"/>
+      <circle cx="35" cy="42" r="3" fill="#122033"/>
+    </g></svg>
+  </div>
+  <div class="koi koi-3">
+    <svg viewBox="0 0 200 90"><g>
+      <path d="M20 45 C40 15,120 10,150 30 C175 45,185 45,195 40 C185 50,175 50,150 60 C120 78,40 72,20 45Z" fill="#f0ad3f"/>
+      <path d="M195 40 L215 25 L210 45 L218 62 Z" fill="#f0ad3f" opacity=".85"/>
+      <circle cx="35" cy="42" r="3" fill="#122033"/>
+    </g></svg>
+  </div>
+</div>
+
+<div class="page">
+  <header class="hero">
+    <span class="eyebrow">Cek Nomor Peserta</span>
+    <h1 class="title">ADHYANARA 2026</h1>
+    <p class="subtitle">Masukkan nama lengkapmu untuk menemukan nomor peserta &amp; lokasi dudukmu</p>
+    <p class="tagline">— Beyond the Limit —</p>
+  </header>
+
+  <section class="search-card">
+    <label for="nameInput">Nama Lengkap</label>
+    <div class="search-row">
+      <input id="nameInput" type="text" placeholder="Contoh: Faiz" autocomplete="off" />
+      <button id="searchBtn">Cari</button>
+    </div>
+    <p class="hint">🔍 Tidak perlu ketik nama lengkap persis — ketik sebagian nama pun tetap ketemu.</p>
+  </section>
+
+  <div id="results"></div>
+
+  <footer>
+    <div>📍 Lokasi acara: <a class="maps-link" id="footerMaps" href="#" target="_blank" rel="noopener">Buka di Google Maps</a></div>
+    <div style="margin-top:6px;">Ada kendala data peserta? Hubungi panitia registrasi.</div>
+    <button class="admin-link" id="adminOpenBtn">Login Panitia</button>
+  </footer>
+</div>
+
+<!-- ADMIN MODAL -->
+<div class="modal-overlay" id="adminOverlay">
+  <div class="modal">
+    <button class="modal-close" id="adminCloseBtn">×</button>
+
+    <div id="loginPane">
+      <h2>Login Panitia</h2>
+      <p class="sub">Khusus panitia untuk mengelola data peserta.</p>
+      <div class="field">
+        <label for="adminPass">Kata Sandi</label>
+        <input type="password" id="adminPass" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary" id="loginBtn">Masuk</button>
+      <p class="admin-note">Demo: kata sandi default adalah <b>adhyanara2026</b>. Ganti nilai <span class="font-mono">CONFIG.adminPassword</span> di kode sebelum website di-deploy untuk keamanan.</p>
+    </div>
+
+    <div id="adminPane" class="hidden">
+      <h2>Panel Panitia</h2>
+      <p class="sub"><span id="dataCount">0</span> peserta terdata di sesi ini.</p>
+
+      <div class="row-actions">
+        <label class="btn btn-outline" style="cursor:pointer;">
+          📥 Unggah Excel / CSV
+          <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" class="hidden">
+        </label>
+        <button class="btn btn-ghost" id="addRowBtn">➕ Tambah Peserta</button>
+        <button class="btn btn-ghost" id="exportExcelBtn">📤 Unduh Excel</button>
+        <button class="btn btn-ghost" id="exportCodeBtn">🧩 Salin sebagai Kode Data</button>
+        <button class="btn btn-outline" id="scanOpenBtn">📷 Scan QR Check-in</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" id="dataTable">
+          <thead>
+            <tr>
+              <th>Nomor</th><th>Nama</th><th>Kelompok</th><th>Meja</th><th>Area</th><th>Status</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="dataTbody"></tbody>
+        </table>
+      </div>
+
+      <div id="scanPane" class="hidden" style="margin-top:18px; text-align:center;">
+        <div id="scanBox"></div>
+        <p id="scanResult" style="font-size:13px; color:var(--ink-soft); margin-top:10px;"></p>
+        <button class="btn btn-ghost" id="scanCloseBtn" style="margin-top:8px;">Tutup Scanner</button>
+      </div>
+
+      <div class="admin-note">
+        ⚠️ Perubahan pada panel ini hanya tersimpan selama sesi browser (belum terhubung ke server/database), sesuai batasan website statis gratisan (GitHub Pages / Netlify / Vercel).<br><br>
+        Agar data yang diunggah tampil untuk <b>semua pengunjung</b> secara permanen, gunakan salah satu cara ini:<br>
+        1) Klik <b>"Salin sebagai Kode Data"</b>, lalu tempelkan hasilnya ke variabel <span class="font-mono">DEFAULT_DATA</span> di file <span class="font-mono">index.html</span> sebelum di-upload ulang ke hosting.<br>
+        2) Atau hubungkan ke Google Sheets / database sederhana bila ingin update data tanpa upload ulang file.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   KONFIGURASI — silakan ubah sesuai kebutuhan acara
+   ========================================================= */
+const CONFIG = {
+  eventName: "ADHYANARA 2026",
+  tagline: "Beyond the Limit",
+  adminPassword: "adhyanara2026",
+  venueName: "Gedung Serbaguna Adhyanara",
+  venueMapsUrl: "https://maps.google.com/?q=Fakultas+Ekonomi+dan+Bisnis+Telkom+University+Bandung&utm_source=chatgpt.com",
+};
+
+/* Data contoh — ganti / tambah lewat panel Panitia, atau tempel hasil
+   ekspor "Salin sebagai Kode Data" di sini agar jadi data bawaan. */
+const DEFAULT_DATA = [
+  { nomor:"A-011", nama:"Davi Putera Suyono", kelompok:"2", meja:"M-05", area:"Networking Village A", status:"Terdaftar" },
+  { nomor:"A-012", nama:"Sulthon Auliyah Abkhoj Faiz", kelompok:"4", meja:"M-09", area:"Networking Village B", status:"Terdaftar" },
+  { nomor:"A-013", nama:"Putri Mayrisa", kelompok:"1", meja:"M-02", area:"Networking Village A", status:"Terdaftar" },
+  { nomor:"A-014", nama:"Manda Neisya Putrie", kelompok:"5", meja:"M-12", area:"Networking Village B", status:"Terdaftar" },
+  { nomor:"A-015", nama:"Nadifa Arkandhiya", kelompok:"3", meja:"M-07", area:"Networking Village A", status:"Terdaftar" },
+  { nomor:"A-016", nama:"Evelina Sevira Putri", kelompok:"2", meja:"M-04", area:"Networking Village B", status:"Terdaftar" },
+  { nomor:"A-017", nama:"Huriyatul Husna Muthmainah", kelompok:"4", meja:"M-10", area:"Networking Village A", status:"Terdaftar" },
+  { nomor:"A-018", nama:"Laine Elasya Rutumalessy", kelompok:"1", meja:"M-03", area:"Networking Village B", status:"Terdaftar" },
+  { nomor:"A-019", nama:"Edward Briliant Bunvianto", kelompok:"5", meja:"M-11", area:"Networking Village A", status:"Terdaftar" },
+  { nomor:"A-020", nama:"Shereen Audytha Yumma", kelompok:"3", meja:"M-08", area:"Networking Village B", status:"Terdaftar" },
+  { nomor:"A-021", nama:"Nadda Yunior Mi'raj", kelompok:"2", meja:"M-06", area:"Networking Village A", status:"Terdaftar" },
+  { nomor:"A-022", nama:"Viva Aini", kelompok:"5", meja:"M-01", area:"Networking Village B", status:"Terdaftar" },
+  { nomor:"A-023", nama:"Edwin Rommel Pratama", kelompok:"4", meja:"M-09", area:"Networking Village A", status:"Terdaftar" },
+  { nomor:"A-024", nama:"Aqila Nur Faza", kelompok:"1", meja:"M-05", area:"Networking Village B", status:"Terdaftar" },
+  { nomor:"A-025", nama:"Asri Fauziah", kelompok:"3", meja:"M-10", area:"Networking Village A", status:"Terdaftar" },
+  { nomor:"A-026", nama:"Miftah Zakiah", kelompok:"2", meja:"M-07", area:"Networking Village B", status:"Terdaftar" },
+  { nomor:"A-027", nama:"Gracia Angelika", kelompok:"4", meja:"M-12", area:"Networking Village A", status:"Terdaftar" },
+];
+
+let state = { data: DEFAULT_DATA.map(d => ({...d})) };
+
+/* =========================================================
+   UTIL
+   ========================================================= */
+function normalize(str){
+  return (str || "")
+    .toString()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g," ");
+}
+
+function searchByName(query){
+  const q = normalize(query);
+  if(!q) return [];
+  const tokens = q.split(" ").filter(Boolean);
+  return state.data.filter(p => {
+    const name = normalize(p.nama);
+    const nomor = normalize(p.nomor);
+    if(nomor.includes(q)) return true;
+    return tokens.every(t => name.includes(t));
+  });
+}
+
+function escapeHtml(s){
+  return (s||"").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* =========================================================
+   SEARCH UI
+   ========================================================= */
+const resultsEl = document.getElementById("results");
+const nameInput = document.getElementById("nameInput");
+
+document.getElementById("searchBtn").addEventListener("click", doSearch);
+nameInput.addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
+
+function doSearch(){
+  const q = nameInput.value;
+  resultsEl.innerHTML = "";
+  if(!normalize(q)){
+    resultsEl.innerHTML = `<div class="msg-card">Silakan ketik nama terlebih dahulu 🙂</div>`;
+    return;
+  }
+  const matches = searchByName(q);
+  if(matches.length === 0){
+    resultsEl.innerHTML = `<div class="msg-card">Nama <b>"${escapeHtml(q)}"</b> tidak ditemukan.<br>Coba periksa kembali ejaan, atau hubungi panitia registrasi.</div>`;
+    return;
+  }
+  if(matches.length === 1){
+    renderTicket(matches[0]);
+    return;
+  }
+  const list = document.createElement("div");
+  list.className = "pick-list";
+  list.innerHTML = `<div style="color:var(--foam-light); font-size:12.5px; padding:8px 10px;">Ditemukan ${matches.length} nama serupa, pilih salah satu:</div>`;
+  matches.forEach(m => {
+    const item = document.createElement("div");
+    item.className = "pick-item";
+    item.innerHTML = `<span>${escapeHtml(m.nama)}</span><span class="n">${escapeHtml(m.nomor)}</span>`;
+    item.addEventListener("click", () => renderTicket(m));
+    list.appendChild(item);
+  });
+  resultsEl.appendChild(list);
+}
+
+function renderTicket(p){
+  resultsEl.innerHTML = "";
+  const checked = p.status && p.status.toLowerCase().includes("check");
+  const ticket = document.createElement("div");
+  ticket.className = "ticket";
+  ticket.innerHTML = `
+    <div class="ticket-head">
+      <span class="eb">TIKET PESERTA</span>
+      <span class="ev">${CONFIG.eventName} · ${CONFIG.tagline}</span>
+    </div>
+    <div class="ticket-body">
+      <div class="ticket-info">
+        <p class="name">👤 ${escapeHtml(p.nama)}</p>
+        <p class="num">🎫 ${escapeHtml(p.nomor)}</p>
+        <div class="meta-grid">
+          <div class="meta-item"><div class="lbl">Kelompok</div><div class="val">${escapeHtml(p.kelompok || "-")}</div></div>
+          <div class="meta-item"><div class="lbl">Meja</div><div class="val">${escapeHtml(p.meja || "-")}</div></div>
+        </div>
+        <span class="status-pill ${checked ? "checked" : ""}">${checked ? "✅ Sudah Check-in" : "✅ " + escapeHtml(p.status || "Terdaftar")}</span>
+      </div>
+      <div class="qr-box" id="qrBox"></div>
+    </div>
+    <div class="tear"></div>
+    <div class="ticket-foot">
+      <div class="area-tag">📍 Area: <b>${escapeHtml(p.area || CONFIG.venueName)}</b></div>
+      <a class="maps-link" href="${CONFIG.venueMapsUrl}" target="_blank" rel="noopener">🗺️ Lihat lokasi acara →</a>
+    </div>
+  `;
+  resultsEl.appendChild(ticket);
+  new QRCode(document.getElementById("qrBox"), {
+    text: `${p.nomor}|${p.nama}`,
+    width: 96, height: 96,
+    colorDark:"#0e2c4d", colorLight:"#ffffff",
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  ticket.scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+document.getElementById("footerMaps").href = CONFIG.venueMapsUrl;
+
+/* =========================================================
+   ADMIN PANEL
+   ========================================================= */
+const adminOverlay = document.getElementById("adminOverlay");
+const loginPane = document.getElementById("loginPane");
+const adminPane = document.getElementById("adminPane");
+
+document.getElementById("adminOpenBtn").addEventListener("click", () => {
+  adminOverlay.classList.add("open");
+});
+document.getElementById("adminCloseBtn").addEventListener("click", closeAdmin);
+adminOverlay.addEventListener("click", e => { if(e.target === adminOverlay) closeAdmin(); });
+function closeAdmin(){ adminOverlay.classList.remove("open"); stopScanner(); }
+
+document.getElementById("loginBtn").addEventListener("click", () => {
+  const val = document.getElementById("adminPass").value;
+  if(val === CONFIG.adminPassword){
+    loginPane.classList.add("hidden");
+    adminPane.classList.remove("hidden");
+    renderAdminTable();
+  } else {
+    alert("Kata sandi salah.");
+  }
+});
+
+const tbody = document.getElementById("dataTbody");
+const dataCountEl = document.getElementById("dataCount");
+
+function renderAdminTable(){
+  tbody.innerHTML = "";
+  state.data.forEach((row, idx) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input value="${escapeHtml(row.nomor)}" data-idx="${idx}" data-key="nomor"></td>
+      <td><input value="${escapeHtml(row.nama)}" data-idx="${idx}" data-key="nama"></td>
+      <td><input value="${escapeHtml(row.kelompok)}" data-idx="${idx}" data-key="kelompok"></td>
+      <td><input value="${escapeHtml(row.meja)}" data-idx="${idx}" data-key="meja"></td>
+      <td><input value="${escapeHtml(row.area||"")}" data-idx="${idx}" data-key="area"></td>
+      <td><input value="${escapeHtml(row.status||"Terdaftar")}" data-idx="${idx}" data-key="status"></td>
+      <td><button class="del-btn" data-idx="${idx}" title="Hapus">🗑️</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  dataCountEl.textContent = state.data.length;
+
+  tbody.querySelectorAll("input").forEach(inp => {
+    inp.addEventListener("change", () => {
+      const i = +inp.dataset.idx, k = inp.dataset.key;
+      state.data[i][k] = inp.value;
+    });
+  });
+  tbody.querySelectorAll(".del-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.data.splice(+btn.dataset.idx, 1);
+      renderAdminTable();
+    });
+  });
+}
+
+document.getElementById("addRowBtn").addEventListener("click", () => {
+  state.data.push({ nomor:"A-"+String(state.data.length+1).padStart(3,"0"), nama:"", kelompok:"", meja:"", area:"", status:"Terdaftar" });
+  renderAdminTable();
+});
+
+/* --- Upload Excel/CSV --- */
+document.getElementById("excelInput").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const wb = XLSX.read(evt.target.result, {type:"binary"});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {defval:""});
+    const mapped = rows.map((r,i) => ({
+      nomor: r.Nomor || r.nomor || r["No"] || `A-${String(i+1).padStart(3,"0")}`,
+      nama: r.Nama || r.nama || "",
+      kelompok: r.Kelompok || r.kelompok || "",
+      meja: r.Meja || r.meja || "",
+      area: r.Area || r.area || "",
+      status: r.Status || r.status || "Terdaftar",
+    })).filter(r => r.nama);
+    if(mapped.length === 0){
+      alert("Tidak ada data terbaca. Pastikan kolom Excel bernama: Nomor, Nama, Kelompok, Meja (Area & Status opsional).");
+      return;
+    }
+    state.data = mapped;
+    renderAdminTable();
+    alert(`${mapped.length} data peserta berhasil dimuat.`);
+  };
+  reader.readAsBinaryString(file);
+  e.target.value = "";
+});
+
+/* --- Export Excel --- */
+document.getElementById("exportExcelBtn").addEventListener("click", () => {
+  const ws = XLSX.utils.json_to_sheet(state.data.map(r => ({
+    Nomor:r.nomor, Nama:r.nama, Kelompok:r.kelompok, Meja:r.meja, Area:r.area, Status:r.status
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Peserta");
+  XLSX.writeFile(wb, "peserta-adhyanara-2026.xlsx");
+});
+
+/* --- Export as JS code (to paste into DEFAULT_DATA) --- */
+document.getElementById("exportCodeBtn").addEventListener("click", () => {
+  const code = "const DEFAULT_DATA = " + JSON.stringify(state.data, null, 2) + ";";
+  navigator.clipboard.writeText(code).then(() => {
+    alert("Kode data disalin ke clipboard. Tempelkan untuk menggantikan DEFAULT_DATA di index.html.");
+  }).catch(() => {
+    prompt("Salin kode berikut secara manual:", code);
+  });
+});
+
+/* --- QR Scanner (check-in) --- */
+let html5QrCode = null;
+document.getElementById("scanOpenBtn").addEventListener("click", () => {
+  document.getElementById("scanPane").classList.remove("hidden");
+  html5QrCode = new Html5Qrcode("scanBox");
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 220 },
+    decodedText => {
+      const nomor = decodedText.split("|")[0];
+      const person = state.data.find(p => p.nomor === nomor);
+      const resultEl = document.getElementById("scanResult");
+      if(person){
+        person.status = "Sudah Check-in";
+        resultEl.textContent = `✅ ${person.nama} (${person.nomor}) berhasil check-in.`;
+        renderAdminTable();
+      } else {
+        resultEl.textContent = `⚠️ Kode tidak dikenali: ${decodedText}`;
+      }
+    },
+    () => {}
+  ).catch(err => {
+    document.getElementById("scanResult").textContent = "Tidak bisa mengakses kamera: " + err;
+  });
+});
+document.getElementById("scanCloseBtn").addEventListener("click", stopScanner);
+function stopScanner(){
+  document.getElementById("scanPane").classList.add("hidden");
+  if(html5QrCode){
+    html5QrCode.stop().then(()=>html5QrCode.clear()).catch(()=>{});
+    html5QrCode = null;
+  }
+}
+</script>
+</body>
+</html>
