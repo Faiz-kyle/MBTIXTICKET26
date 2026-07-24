@@ -259,6 +259,56 @@
   #scanBox{width:100%; max-width:360px; margin:0 auto;}
   .hidden{display:none !important;}
 
+  /* ---------- Attendance / Konfirmasi Kehadiran ---------- */
+  .attend-box{padding:18px 22px 22px; text-align:center;}
+  .attend-btn{width:100%; max-width:320px; padding:13px 18px; font-size:14.5px;}
+  .attend-btn:disabled{opacity:.55; cursor:not-allowed;}
+  .attend-hint{color:var(--ink-soft); font-size:12.5px; margin:10px 0 0;}
+  .attend-msg{color:var(--koi-red); font-size:12.5px; font-weight:700; margin:8px 0 0; min-height:14px;}
+  .attend-box.attend-done{
+    background:linear-gradient(180deg, rgba(60,138,91,.08), transparent);
+  }
+  .attend-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--ok); color:#fff; font-weight:800; font-size:13px;
+    padding:8px 18px; border-radius:999px; letter-spacing:.03em;
+    box-shadow:0 8px 18px -8px rgba(60,138,91,.7);
+  }
+  .attend-meta{display:flex; justify-content:center; gap:22px; flex-wrap:wrap; margin:14px 0;}
+  .attend-meta-item{display:flex; flex-direction:column; align-items:center; gap:2px;}
+  .attend-meta-item .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); opacity:.75;}
+  .attend-meta-item .val{font-size:14px; font-weight:700; color:var(--ink);}
+
+  /* ---------- Birthdate auth card ---------- */
+  .auth-card{text-align:center; padding:26px 20px;}
+
+  /* ---------- Admin dashboard stats ---------- */
+  .stats-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px;}
+  .stat-card{
+    background:#fff; border:1px solid var(--paper-dark); border-radius:12px;
+    padding:12px 10px; text-align:center;
+  }
+  .stat-card .num{font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; color:var(--ink);}
+  .stat-card .lbl{font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-top:2px;}
+  .stat-card.hadir .num{color:var(--ok);}
+  .stat-card.belum .num{color:var(--koi-red);}
+  .stat-card.pct .num{color:var(--ocean);}
+  @media (max-width:560px){ .stats-grid{grid-template-columns:repeat(2,1fr);} }
+
+  /* ---------- Filter bar ---------- */
+  .filter-bar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+  .filter-input,.filter-select{
+    padding:9px 11px; border-radius:8px; border:1.5px solid var(--paper-dark);
+    font-size:13px; background:#fff; color:var(--ink);
+  }
+  .filter-input{flex:1; min-width:160px;}
+  .status-dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px;}
+  .status-dot.on{background:var(--ok);}
+  .status-dot.off{background:var(--koi-red);}
+  select.status-select{border:1px solid transparent; background:transparent; font-size:13px; border-radius:6px; padding:4px 4px;}
+  select.status-select:focus{border-color:var(--koi-gold); background:#fff; outline:none;}
+  .checkin-cell{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-soft); white-space:nowrap;}
+
   @media (max-width:520px){
     .search-row{flex-direction:column;}
     .search-row button{padding:13px;}
@@ -346,6 +396,8 @@
       <h2>Panel Panitia</h2>
       <p class="sub"><span id="dataCount">0</span> peserta terdata di sesi ini.</p>
 
+      <div class="stats-grid" id="statsGrid"></div>
+
       <div class="row-actions">
         <label class="btn btn-outline" style="cursor:pointer;">
           📥 Unggah Excel / CSV
@@ -353,15 +405,31 @@
         </label>
         <button class="btn btn-ghost" id="addRowBtn">➕ Tambah Peserta</button>
         <button class="btn btn-ghost" id="exportExcelBtn">📤 Unduh Excel</button>
+        <button class="btn btn-ghost" id="exportCsvBtn">📄 Unduh CSV</button>
         <button class="btn btn-ghost" id="exportCodeBtn">🧩 Salin sebagai Kode Data</button>
         <button class="btn btn-outline" id="scanOpenBtn">📷 Scan QR Check-in</button>
+      </div>
+
+      <div class="filter-bar">
+        <input type="text" id="filterSearch" placeholder="🔍 Cari nama / nomor..." class="filter-input">
+        <select id="filterStatus" class="filter-select">
+          <option value="">Semua Status</option>
+          <option value="Hadir">🟢 Hadir</option>
+          <option value="Belum">🔴 Belum Hadir</option>
+        </select>
+        <select id="filterKelompok" class="filter-select">
+          <option value="">Semua Kelompok</option>
+        </select>
+        <select id="filterArea" class="filter-select">
+          <option value="">Semua Area</option>
+        </select>
       </div>
 
       <div class="table-wrap">
         <table class="data-table" id="dataTable">
           <thead>
             <tr>
-              <th>Nomor</th><th>Nama</th><th>Kelompok</th><th>Meja</th><th>Area</th><th>Status</th><th></th>
+              <th>Nomor</th><th>Nama</th><th>Kelompok</th><th>Meja</th><th>Area</th><th>Tgl Lahir</th><th>Status</th><th>Waktu Check-in</th><th></th>
             </tr>
           </thead>
           <tbody id="dataTbody"></tbody>
@@ -394,28 +462,37 @@ const CONFIG = {
   adminPassword: "adhyanara2026",
   venueName: "Gedung Serbaguna Adhyanara",
   venueMapsUrl: "https://maps.google.com/?q=Fakultas+Ekonomi+dan+Bisnis+Telkom+University+Bandung&utm_source=chatgpt.com",
+  // --- Konfirmasi Kehadiran ---
+  eventYear: 2026,
+  eventMonth: 8,      // Agustus
+  eventDay: 28,       // Konfirmasi kehadiran hanya bisa tgl ini
+  venueLat: -6.973000,   // TODO: ganti dengan koordinat asli lokasi acara
+  venueLng: 107.630000,  // TODO: ganti dengan koordinat asli lokasi acara
+  venueRadiusMeters: 100,
 };
 
 /* Data contoh — ganti / tambah lewat panel Panitia, atau tempel hasil
    ekspor "Salin sebagai Kode Data" di sini agar jadi data bawaan. */
 const DEFAULT_DATA = [
-  { nomor:"A-011", nama:"Davi Putera Suyono", kelompok:"2", meja:"M-05", area:"Networking Village A", status:"Terdaftar" },
-  { nomor:"A-012", nama:"Sulthon Auliyah Abkhoj Faiz", kelompok:"4", meja:"M-09", area:"Networking Village B", status:"Terdaftar" },
-  { nomor:"A-013", nama:"Putri Mayrisa", kelompok:"1", meja:"M-02", area:"Networking Village A", status:"Terdaftar" },
-  { nomor:"A-014", nama:"Manda Neisya Putrie", kelompok:"5", meja:"M-12", area:"Networking Village B", status:"Terdaftar" },
-  { nomor:"A-015", nama:"Nadifa Arkandhiya", kelompok:"3", meja:"M-07", area:"Networking Village A", status:"Terdaftar" },
-  { nomor:"A-016", nama:"Evelina Sevira Putri", kelompok:"2", meja:"M-04", area:"Networking Village B", status:"Terdaftar" },
-  { nomor:"A-017", nama:"Huriyatul Husna Muthmainah", kelompok:"4", meja:"M-10", area:"Networking Village A", status:"Terdaftar" },
-  { nomor:"A-018", nama:"Laine Elasya Rutumalessy", kelompok:"1", meja:"M-03", area:"Networking Village B", status:"Terdaftar" },
-  { nomor:"A-019", nama:"Edward Briliant Bunvianto", kelompok:"5", meja:"M-11", area:"Networking Village A", status:"Terdaftar" },
-  { nomor:"A-020", nama:"Shereen Audytha Yumma", kelompok:"3", meja:"M-08", area:"Networking Village B", status:"Terdaftar" },
-  { nomor:"A-021", nama:"Nadda Yunior Mi'raj", kelompok:"2", meja:"M-06", area:"Networking Village A", status:"Terdaftar" },
-  { nomor:"A-022", nama:"Viva Aini", kelompok:"5", meja:"M-01", area:"Networking Village B", status:"Terdaftar" },
-  { nomor:"A-023", nama:"Edwin Rommel Pratama", kelompok:"4", meja:"M-09", area:"Networking Village A", status:"Terdaftar" },
-  { nomor:"A-024", nama:"Aqila Nur Faza", kelompok:"1", meja:"M-05", area:"Networking Village B", status:"Terdaftar" },
-  { nomor:"A-025", nama:"Asri Fauziah", kelompok:"3", meja:"M-10", area:"Networking Village A", status:"Terdaftar" },
-  { nomor:"A-026", nama:"Miftah Zakiah", kelompok:"2", meja:"M-07", area:"Networking Village B", status:"Terdaftar" },
-  { nomor:"A-027", nama:"Gracia Angelika", kelompok:"4", meja:"M-12", area:"Networking Village A", status:"Terdaftar" },
+  { nomor:"A-011", nama:"Davi Putera Suyono", kelompok:"2", meja:"M-05", area:"Networking Village A", status:"Terdaftar", tglLahir:"11032005" },
+  { nomor:"A-012", nama:"Sulthon Auliyah Abkhoj Faiz", kelompok:"4", meja:"M-09", area:"Networking Village B", status:"Terdaftar", tglLahir:"28112008" },
+  { nomor:"A-013", nama:"Putri Mayrisa", kelompok:"1", meja:"M-02", area:"Networking Village A", status:"Terdaftar", tglLahir:"05092005" },
+  { nomor:"A-014", nama:"Manda Neisya Putrie", kelompok:"5", meja:"M-12", area:"Networking Village B", status:"Terdaftar", tglLahir:"14122004" },
+  { nomor:"A-015", nama:"Nadifa Arkandhiya", kelompok:"3", meja:"M-07", area:"Networking Village A", status:"Terdaftar", tglLahir:"27042005" },
+  { nomor:"A-016", nama:"Evelina Sevira Putri", kelompok:"2", meja:"M-04", area:"Networking Village B", status:"Terdaftar", tglLahir:"09062005" },
+  { nomor:"A-017", nama:"Huriyatul Husna Muthmainah", kelompok:"4", meja:"M-10", area:"Networking Village A", status:"Terdaftar", tglLahir:"18102004" },
+  { nomor:"A-018", nama:"Laine Elasya Rutumalessy", kelompok:"1", meja:"M-03", area:"Networking Village B", status:"Terdaftar", tglLahir:"30012005" },
+  { nomor:"A-019", nama:"Edward Briliant Bunvianto", kelompok:"5", meja:"M-11", area:"Networking Village A", status:"Terdaftar", tglLahir:"03082004" },
+  { nomor:"A-020", nama:"Shereen Audytha Yumma", kelompok:"3", meja:"M-08", area:"Networking Village B", status:"Terdaftar", tglLahir:"25112005" },
+  { nomor:"A-021", nama:"Nadda Yunior Mi'raj", kelompok:"2", meja:"M-06", area:"Networking Village A", status:"Terdaftar", tglLahir:"12052005" },
+  { nomor:"A-022", nama:"Viva Aini", kelompok:"5", meja:"M-01", area:"Networking Village B", status:"Terdaftar", tglLahir:"08022005" },
+  { nomor:"A-023", nama:"Edwin Rommel Pratama", kelompok:"4", meja:"M-09", area:"Networking Village A", status:"Terdaftar", tglLahir:"19092004" },
+  { nomor:"A-024", nama:"Aqila Nur Faza", kelompok:"1", meja:"M-05", area:"Networking Village B", status:"Terdaftar", tglLahir:"01122005" },
+  { nomor:"A-025", nama:"Asri Fauziah", kelompok:"3", meja:"M-10", area:"Networking Village A", status:"Terdaftar", tglLahir:"16062005" },
+  { nomor:"A-026", nama:"Miftah Zakiah", kelompok:"2", meja:"M-07", area:"Networking Village B", status:"Terdaftar", tglLahir:"23032005" },
+  { nomor:"A-027", nama:"Gracia Angelika", kelompok:"4", meja:"M-12", area:"Networking Village A", status:"Terdaftar", tglLahir:"07072005" },
+  { nomor:"A-028", nama:"Hafif Adly Azhar", kelompok:"4", meja:"M-07", area:"Networking Village A", status:"Terdaftar", tglLahir:"00000000" },
+  { nomor:"A-029", nama:"Keisha Ramadhani Zahra", kelompok:"5", meja:"M-14", area:"Networking Village B", status:"Terdaftar", tglLahir:"00000000" },
 ];
 
 let state = { data: DEFAULT_DATA.map(d => ({...d})) };
@@ -470,7 +547,7 @@ function doSearch(){
     return;
   }
   if(matches.length === 1){
-    renderTicket(matches[0]);
+    askBirthdate(matches[0]);
     return;
   }
   const list = document.createElement("div");
@@ -480,15 +557,181 @@ function doSearch(){
     const item = document.createElement("div");
     item.className = "pick-item";
     item.innerHTML = `<span>${escapeHtml(m.nama)}</span><span class="n">${escapeHtml(m.nomor)}</span>`;
-    item.addEventListener("click", () => renderTicket(m));
+    item.addEventListener("click", () => askBirthdate(m));
     list.appendChild(item);
   });
   resultsEl.appendChild(list);
 }
 
+/* =========================================================
+   AUTENTIKASI E-TICKET (tanggal lahir sebagai password)
+   ========================================================= */
+function askBirthdate(p){
+  resultsEl.innerHTML = "";
+  const card = document.createElement("div");
+  card.className = "msg-card auth-card";
+  card.innerHTML = `
+    <p style="margin:0 0 12px; color:var(--foam-light);">Verifikasi identitas untuk <b style="color:#fff;">${escapeHtml(p.nama)}</b></p>
+    <div class="search-row" style="max-width:320px; margin:0 auto;">
+      <input id="dobInput" type="text" inputmode="numeric" maxlength="8" placeholder="DDMMYYYY" autocomplete="off" style="text-align:center; letter-spacing:.08em;">
+      <button id="dobSubmitBtn">Buka</button>
+    </div>
+    <p class="hint" style="margin-top:10px;">Masukkan tanggal lahir sesuai data pendaftaran. Format: DDMMYYYY (contoh 17082006).</p>
+    <p id="dobError" style="color:#ffb4a8; font-size:13px; margin-top:8px; min-height:16px;"></p>
+    <button class="admin-link" id="dobBackBtn" style="margin-top:2px;">← Kembali ke pencarian</button>
+  `;
+  resultsEl.appendChild(card);
+
+  const dobInput = document.getElementById("dobInput");
+  const dobErr = document.getElementById("dobError");
+  dobInput.focus();
+
+  function attempt(){
+    const val = dobInput.value.replace(/\D/g,"");
+    // NOTE: pengecekan ini harus DIULANG di backend saat produksi —
+    // jangan percaya hasil validasi dari browser saja.
+    if(val && val === (p.tglLahir || "")){
+      renderTicket(p);
+    } else {
+      dobErr.textContent = "Tanggal lahir yang Anda masukkan tidak sesuai.";
+      dobInput.value = "";
+      dobInput.focus();
+    }
+  }
+  document.getElementById("dobSubmitBtn").addEventListener("click", attempt);
+  dobInput.addEventListener("keydown", e => { if(e.key === "Enter") attempt(); });
+  document.getElementById("dobBackBtn").addEventListener("click", () => {
+    resultsEl.innerHTML = "";
+    nameInput.focus();
+  });
+}
+
+/* =========================================================
+   KONFIRMASI KEHADIRAN — tanggal & lokasi (GPS)
+   ========================================================= */
+function isEventDay(){
+  const now = new Date();
+  return now.getFullYear() === CONFIG.eventYear &&
+         (now.getMonth() + 1) === CONFIG.eventMonth &&
+         now.getDate() === CONFIG.eventDay;
+}
+
+function distanceMeters(lat1, lng1, lat2, lng2){
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+const BULAN_ID = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+function formatTanggalIndo(d){
+  return `${d.getDate()} ${BULAN_ID[d.getMonth()]} ${d.getFullYear()}`;
+}
+function formatJamWIB(d){
+  const hh = String(d.getHours()).padStart(2,"0");
+  const mm = String(d.getMinutes()).padStart(2,"0");
+  return `${hh}.${mm} WIB`;
+}
+
+function attendSectionHtml(p){
+  const isHadir = p.status === "Hadir";
+  if(isHadir){
+    return `
+      <div class="attend-box attend-done">
+        <div class="attend-badge">✓ SUDAH HADIR</div>
+        <div class="attend-meta">
+          <div class="attend-meta-item"><span class="lbl">Status</span><span class="val">🟢 Hadir</span></div>
+          <div class="attend-meta-item"><span class="lbl">Tanggal Check-in</span><span class="val">${escapeHtml(p.checkinDate || "-")}</span></div>
+          <div class="attend-meta-item"><span class="lbl">Waktu Check-in</span><span class="val">${escapeHtml(p.checkinTime || "-")}</span></div>
+        </div>
+        <button class="btn btn-ghost attend-btn" disabled>✓ Sudah Hadir</button>
+      </div>`;
+  }
+  const eventOk = isEventDay();
+  return `
+    <div class="attend-box">
+      <button class="btn btn-primary attend-btn" id="attendBtn" ${eventOk ? "" : "disabled"}>✅ Konfirmasi Kehadiran</button>
+      <p class="attend-hint">${eventOk ? "Pastikan Anda sudah berada di lokasi acara sebelum menekan tombol ini." : "Konfirmasi kehadiran dapat dilakukan mulai 28 Agustus 2026."}</p>
+      <p class="attend-msg" id="attendMsg"></p>
+    </div>`;
+}
+
+function setupAttendButton(p){
+  const btn = document.getElementById("attendBtn");
+  if(!btn) return;
+  const msgEl = document.getElementById("attendMsg");
+  btn.addEventListener("click", () => handleConfirmAttendance(p, btn, msgEl));
+}
+
+function handleConfirmAttendance(p, btn, msgEl){
+  msgEl.textContent = "";
+
+  if(!isEventDay()){
+    msgEl.textContent = "Konfirmasi kehadiran dapat dilakukan mulai 28 Agustus 2026.";
+    return;
+  }
+  if(p.status === "Hadir"){
+    // setara respons backend HTTP 409 Conflict
+    msgEl.textContent = "Kehadiran Anda telah dikonfirmasi sebelumnya.";
+    return;
+  }
+  if(!navigator.geolocation){
+    msgEl.textContent = "Perangkat/browser Anda tidak mendukung layanan lokasi.";
+    return;
+  }
+
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = "📍 Memeriksa lokasi...";
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const dist = distanceMeters(pos.coords.latitude, pos.coords.longitude, CONFIG.venueLat, CONFIG.venueLng);
+      if(dist > CONFIG.venueRadiusMeters){
+        msgEl.textContent = "Anda belum berada di lokasi acara. Silakan datang ke lokasi terlebih dahulu untuk melakukan konfirmasi kehadiran.";
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+        return;
+      }
+
+      const ok = confirm("Apakah Anda yakin ingin mengonfirmasi kehadiran? Tindakan ini tidak dapat dibatalkan.");
+      if(!ok){
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+        return;
+      }
+
+      // pengecekan ulang sesaat sebelum commit — di produksi, ini WAJIB
+      // dilakukan di backend (idempotency check) untuk mencegah double check-in.
+      if(p.status === "Hadir"){
+        msgEl.textContent = "Kehadiran Anda telah dikonfirmasi sebelumnya.";
+        return;
+      }
+
+      const now = new Date();
+      p.status = "Hadir";
+      p.checkinDate = formatTanggalIndo(now);
+      p.checkinTime = formatJamWIB(now);
+      p.checkinLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+
+      alert("Kehadiran berhasil dikonfirmasi. Selamat datang di ADHYANARA 2026.");
+      renderTicket(p);
+      if(!adminPane.classList.contains("hidden")) renderAdminTable();
+    },
+    () => {
+      msgEl.textContent = "Akses lokasi diperlukan untuk melakukan konfirmasi kehadiran.";
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    },
+    { enableHighAccuracy: true, timeout: 12000 }
+  );
+}
+
 function renderTicket(p){
   resultsEl.innerHTML = "";
-  const checked = p.status && p.status.toLowerCase().includes("check");
+  const checked = p.status && /hadir|check/i.test(p.status);
   const ticket = document.createElement("div");
   ticket.className = "ticket";
   ticket.innerHTML = `
@@ -504,7 +747,7 @@ function renderTicket(p){
           <div class="meta-item"><div class="lbl">Kelompok</div><div class="val">${escapeHtml(p.kelompok || "-")}</div></div>
           <div class="meta-item"><div class="lbl">Meja</div><div class="val">${escapeHtml(p.meja || "-")}</div></div>
         </div>
-        <span class="status-pill ${checked ? "checked" : ""}">${checked ? "✅ Sudah Check-in" : "✅ " + escapeHtml(p.status || "Terdaftar")}</span>
+        <span class="status-pill ${checked ? "checked" : ""}">${checked ? "✅ Hadir" : "✅ " + escapeHtml(p.status || "Terdaftar")}</span>
       </div>
       <div class="qr-box" id="qrBox"></div>
     </div>
@@ -513,6 +756,8 @@ function renderTicket(p){
       <div class="area-tag">📍 Area: <b>${escapeHtml(p.area || CONFIG.venueName)}</b></div>
       <a class="maps-link" href="${CONFIG.venueMapsUrl}" target="_blank" rel="noopener">🗺️ Lihat lokasi acara →</a>
     </div>
+    <div class="tear"></div>
+    ${attendSectionHtml(p)}
   `;
   resultsEl.appendChild(ticket);
   new QRCode(document.getElementById("qrBox"), {
@@ -521,6 +766,7 @@ function renderTicket(p){
     colorDark:"#0e2c4d", colorLight:"#ffffff",
     correctLevel: QRCode.CorrectLevel.M
   });
+  setupAttendButton(p);
   ticket.scrollIntoView({behavior:"smooth", block:"center"});
 }
 
@@ -553,10 +799,67 @@ document.getElementById("loginBtn").addEventListener("click", () => {
 
 const tbody = document.getElementById("dataTbody");
 const dataCountEl = document.getElementById("dataCount");
+const statsGrid = document.getElementById("statsGrid");
+const filterSearch = document.getElementById("filterSearch");
+const filterStatus = document.getElementById("filterStatus");
+const filterKelompok = document.getElementById("filterKelompok");
+const filterArea = document.getElementById("filterArea");
+
+function isHadir(row){ return row.status === "Hadir"; }
+
+function renderStats(){
+  const total = state.data.length;
+  const hadir = state.data.filter(isHadir).length;
+  const belum = total - hadir;
+  const pct = total ? Math.round((hadir/total)*1000)/10 : 0;
+  statsGrid.innerHTML = `
+    <div class="stat-card"><div class="num">${total}</div><div class="lbl">Total Peserta</div></div>
+    <div class="stat-card hadir"><div class="num">${hadir}</div><div class="lbl">Sudah Hadir</div></div>
+    <div class="stat-card belum"><div class="num">${belum}</div><div class="lbl">Belum Hadir</div></div>
+    <div class="stat-card pct"><div class="num">${pct}%</div><div class="lbl">Persentase Hadir</div></div>
+  `;
+}
+
+function refreshFilterOptions(){
+  const keepValue = (sel) => sel.value;
+  const kelompokVal = keepValue(filterKelompok), areaVal = keepValue(filterArea);
+  const kelompokList = [...new Set(state.data.map(r => r.kelompok).filter(Boolean))].sort();
+  const areaList = [...new Set(state.data.map(r => r.area).filter(Boolean))].sort();
+  filterKelompok.innerHTML = `<option value="">Semua Kelompok</option>` +
+    kelompokList.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join("");
+  filterArea.innerHTML = `<option value="">Semua Area</option>` +
+    areaList.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("");
+  filterKelompok.value = kelompokVal; filterArea.value = areaVal;
+}
+
+function getFilteredIndexes(){
+  const q = normalize(filterSearch.value);
+  const st = filterStatus.value;
+  const kl = filterKelompok.value;
+  const ar = filterArea.value;
+  return state.data
+    .map((row, idx) => ({row, idx}))
+    .filter(({row}) => {
+      if(q){
+        const hay = normalize(row.nama) + " " + normalize(row.nomor);
+        if(!hay.includes(q)) return false;
+      }
+      if(st === "Hadir" && !isHadir(row)) return false;
+      if(st === "Belum" && isHadir(row)) return false;
+      if(kl && row.kelompok !== kl) return false;
+      if(ar && row.area !== ar) return false;
+      return true;
+    });
+}
 
 function renderAdminTable(){
+  renderStats();
+  refreshFilterOptions();
   tbody.innerHTML = "";
-  state.data.forEach((row, idx) => {
+  const filtered = getFilteredIndexes();
+  filtered.forEach(({row, idx}) => {
+    const hadir = isHadir(row);
+    const checkinText = hadir ? `${row.checkinDate || "-"}<br>${row.checkinTime || "-"}` : "-";
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><input value="${escapeHtml(row.nomor)}" data-idx="${idx}" data-key="nomor"></td>
@@ -564,7 +867,14 @@ function renderAdminTable(){
       <td><input value="${escapeHtml(row.kelompok)}" data-idx="${idx}" data-key="kelompok"></td>
       <td><input value="${escapeHtml(row.meja)}" data-idx="${idx}" data-key="meja"></td>
       <td><input value="${escapeHtml(row.area||"")}" data-idx="${idx}" data-key="area"></td>
-      <td><input value="${escapeHtml(row.status||"Terdaftar")}" data-idx="${idx}" data-key="status"></td>
+      <td><input value="${escapeHtml(row.tglLahir||"")}" maxlength="8" placeholder="DDMMYYYY" data-idx="${idx}" data-key="tglLahir"></td>
+      <td>
+        <select class="status-select" data-idx="${idx}">
+          <option value="Terdaftar" ${!hadir?"selected":""}><span class="status-dot off"></span>Belum Hadir</option>
+          <option value="Hadir" ${hadir?"selected":""}>Hadir</option>
+        </select>
+      </td>
+      <td class="checkin-cell">${checkinText}</td>
       <td><button class="del-btn" data-idx="${idx}" title="Hapus">🗑️</button></td>
     `;
     tbody.appendChild(tr);
@@ -574,7 +884,23 @@ function renderAdminTable(){
   tbody.querySelectorAll("input").forEach(inp => {
     inp.addEventListener("change", () => {
       const i = +inp.dataset.idx, k = inp.dataset.key;
-      state.data[i][k] = inp.value;
+      state.data[i][k] = k === "tglLahir" ? inp.value.replace(/\D/g,"") : inp.value;
+      renderStats();
+    });
+  });
+  tbody.querySelectorAll(".status-select").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const i = +sel.dataset.idx;
+      const row = state.data[i];
+      if(sel.value === "Hadir" && row.status !== "Hadir"){
+        const now = new Date();
+        row.status = "Hadir";
+        row.checkinDate = formatTanggalIndo(now);
+        row.checkinTime = formatJamWIB(now);
+      } else if(sel.value !== "Hadir"){
+        row.status = "Terdaftar";
+      }
+      renderAdminTable();
     });
   });
   tbody.querySelectorAll(".del-btn").forEach(btn => {
@@ -585,8 +911,13 @@ function renderAdminTable(){
   });
 }
 
+[filterSearch, filterStatus, filterKelompok, filterArea].forEach(el => {
+  el.addEventListener("input", renderAdminTable);
+  el.addEventListener("change", renderAdminTable);
+});
+
 document.getElementById("addRowBtn").addEventListener("click", () => {
-  state.data.push({ nomor:"A-"+String(state.data.length+1).padStart(3,"0"), nama:"", kelompok:"", meja:"", area:"", status:"Terdaftar" });
+  state.data.push({ nomor:"A-"+String(state.data.length+1).padStart(3,"0"), nama:"", kelompok:"", meja:"", area:"", status:"Terdaftar", tglLahir:"" });
   renderAdminTable();
 });
 
@@ -605,10 +936,11 @@ document.getElementById("excelInput").addEventListener("change", e => {
       kelompok: r.Kelompok || r.kelompok || "",
       meja: r.Meja || r.meja || "",
       area: r.Area || r.area || "",
-      status: r.Status || r.status || "Terdaftar",
+      status: (r.Status || r.status || "Terdaftar"),
+      tglLahir: String(r.TglLahir || r.tglLahir || r["Tanggal Lahir"] || "").replace(/\D/g,""),
     })).filter(r => r.nama);
     if(mapped.length === 0){
-      alert("Tidak ada data terbaca. Pastikan kolom Excel bernama: Nomor, Nama, Kelompok, Meja (Area & Status opsional).");
+      alert("Tidak ada data terbaca. Pastikan kolom Excel bernama: Nomor, Nama, Kelompok, Meja, TglLahir (format DDMMYYYY). Area & Status opsional.");
       return;
     }
     state.data = mapped;
@@ -620,13 +952,30 @@ document.getElementById("excelInput").addEventListener("change", e => {
 });
 
 /* --- Export Excel --- */
+function exportRows(){
+  return state.data.map(r => ({
+    Nomor:r.nomor, Nama:r.nama, Kelompok:r.kelompok, Meja:r.meja, Area:r.area,
+    TglLahir:r.tglLahir||"", Status: isHadir(r) ? "Hadir" : "Belum Hadir",
+    TanggalCheckin:r.checkinDate||"", WaktuCheckin:r.checkinTime||""
+  }));
+}
+
 document.getElementById("exportExcelBtn").addEventListener("click", () => {
-  const ws = XLSX.utils.json_to_sheet(state.data.map(r => ({
-    Nomor:r.nomor, Nama:r.nama, Kelompok:r.kelompok, Meja:r.meja, Area:r.area, Status:r.status
-  })));
+  const ws = XLSX.utils.json_to_sheet(exportRows());
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Peserta");
   XLSX.writeFile(wb, "peserta-adhyanara-2026.xlsx");
+});
+
+document.getElementById("exportCsvBtn").addEventListener("click", () => {
+  const ws = XLSX.utils.json_to_sheet(exportRows());
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "peserta-adhyanara-2026.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
 });
 
 /* --- Export as JS code (to paste into DEFAULT_DATA) --- */
@@ -651,12 +1000,17 @@ document.getElementById("scanOpenBtn").addEventListener("click", () => {
       const nomor = decodedText.split("|")[0];
       const person = state.data.find(p => p.nomor === nomor);
       const resultEl = document.getElementById("scanResult");
-      if(person){
-        person.status = "Sudah Check-in";
+      if(!person){
+        resultEl.textContent = `⚠️ Kode tidak dikenali: ${decodedText}`;
+      } else if(person.status === "Hadir"){
+        resultEl.textContent = `⚠️ ${person.nama} (${person.nomor}) — kehadiran telah dikonfirmasi sebelumnya.`;
+      } else {
+        const now = new Date();
+        person.status = "Hadir";
+        person.checkinDate = formatTanggalIndo(now);
+        person.checkinTime = formatJamWIB(now);
         resultEl.textContent = `✅ ${person.nama} (${person.nomor}) berhasil check-in.`;
         renderAdminTable();
-      } else {
-        resultEl.textContent = `⚠️ Kode tidak dikenali: ${decodedText}`;
       }
     },
     () => {}
